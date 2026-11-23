@@ -1,0 +1,36 @@
+diff --git a/ios/ExpoNotifications/Permissions/ExpoNotificationsPermissionsRequester.swift b/ios/ExpoNotifications/Permissions/ExpoNotificationsPermissionsRequester.swift
+index f6848888677fcc0bed9154cf8e921b5da7dd7de4..42d4176331914d2bffa3b0a277c12dccf5ab2fd1 100644
+--- a/ios/ExpoNotifications/Permissions/ExpoNotificationsPermissionsRequester.swift
++++ b/ios/ExpoNotifications/Permissions/ExpoNotificationsPermissionsRequester.swift
+@@ -29,7 +29,7 @@ public class ExpoNotificationsPermissionsRequester: NSObject, EXPermissionsReque
+     return result
+   }
+ 
+-  private func getPermissionsAsync() async -> [AnyHashable: Any] {
++  func getPermissionsAsync() async -> [AnyHashable: Any] {
+     let settings = await UNUserNotificationCenter.current().notificationSettings()
+     return makePermissionsResult(from: settings)
+   }
+diff --git a/ios/ExpoNotifications/Permissions/PermissionsModule.swift b/ios/ExpoNotifications/Permissions/PermissionsModule.swift
+index c98a625935915304adf44d7eee01de96dadcff2c..2d375d464706b43582927b2d6af2d5b05b37baee 100644
+--- a/ios/ExpoNotifications/Permissions/PermissionsModule.swift
++++ b/ios/ExpoNotifications/Permissions/PermissionsModule.swift
+@@ -17,13 +17,11 @@ public class PermissionsModule: Module {
+     }
+ 
+     AsyncFunction("getPermissionsAsync") { (promise: Promise) in
+-      appContext?
+-        .permissions?
+-        .getPermissionUsingRequesterClass(
+-          ExpoNotificationsPermissionsRequester.self,
+-          resolve: promise.legacyResolver,
+-          reject: promise.legacyRejecter
+-        )
++      // The requester's sync getPermissions() blocks the shared async-function queue until iOS replies.
++      Task {
++        let permissions = await requester.getPermissionsAsync()
++        promise.legacyResolver(EXPermissionsService.parsePermission(fromRequester: permissions))
++      }
+     }
+ 
+     AsyncFunction("requestPermissionsAsync") { (requestedPermissions: NotificationPermissionRecord, promise: Promise) in
